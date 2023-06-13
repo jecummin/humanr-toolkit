@@ -1,0 +1,331 @@
+<html>
+    <head>
+        <script
+            src="https://code.jquery.com/jquery-3.6.1.min.js"
+            integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
+            crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="compare.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.10.0/js/md5.min.js"></script>
+        <script type="text/javascript">
+            window.onbeforeunload = function() {
+                return true;
+            };
+
+            var experiment_data = [];
+            let experiment_start_time = new Date().getTime();
+            let urlParams;
+            var link;
+            var assignmentID;
+            var hitID;
+            var workerID;
+
+            var match,
+                pl     = /\+/g,  // Regex for replacing addition symbol with a space
+                search = /([^&=]+)=?([^&]*)/g,
+                decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+                query  = window.location.search.substring(1);
+
+            urlParams = {};
+            while (match = search.exec(query)){
+                urlParams[decode(match[1])] = decode(match[2]);
+            }
+
+            $( document ).ready(function() {
+                console.log(urlParams);
+                link = "practice";
+                if("link" in urlParams ){
+                    link = urlParams["link"];
+                    assignmentID = urlParams["b"];
+                    hitID = urlParams["c"];
+                    workerID = urlParams["d"];
+
+                    console.log(link);
+                    get_captions(link);
+                }
+                if(link == "practice"){
+                    alert("This link is not valid. Please return to mechical turk and click the link again.");
+                }
+            });
+
+
+            let states = ['IRB_screen','instructions_screen','experiment_screen','done_screen'];
+            let currentState = 0;
+            let currentExperimentState = 0;
+            let numExperiments = 0; //set by callback function
+            
+            function nextState(){
+                if(states[currentState]=="experiment_screen"  && currentExperimentState<numExperiments-1){
+                    currentExperimentState++;
+                    console.log("updated trial",currentExperimentState);
+                    updateExperimentScreen();
+                }
+                else{
+                    $("#"+states[currentState]).hide();
+                    currentState++;
+                    if(states[currentState]=="done_screen"){
+                        updateDoneScreen();
+                    }
+                    $("#"+states[currentState]).show();
+                }
+            }
+            function updateDoneScreen(link){
+                let done_code = md5(assignmentID).substr(0, 4);
+                $("#done_code").text(done_code);
+            }
+            function updateExperimentScreen(){
+                $("#task_num").text((currentExperimentState).toString())
+                $("#total_task_num").text(numExperiments.toString())
+                $('input:radio[name=r]').each(function () { $(this).prop('checked', false); }); // clear radio buttons
+                $("#task_image").attr("src","images/"+experiment_data[currentExperimentState]["image"]);
+                $("#c1_text").text(experiment_data[currentExperimentState]["c1_text"]);
+                $("#c2_text").text(experiment_data[currentExperimentState]["c2_text"]);
+                console.log("update");
+            }
+            function get_captions(taskID){
+                $.ajax({url: "/get_captions",
+                        data: { 
+                            "taskID": taskID
+                        },
+                        method: "POST",
+                        success: function(result){
+                            if (result != ""){
+                                experiment_data = result;
+                                numExperiments = experiment_data.length;
+                                updateExperimentScreen();
+                                console.log(result);
+                            }
+                            else{
+                                alert("Something went wrong. Please refresh the page and try again.");
+                            }
+                        }
+                });
+            }
+            function atLeastOneRadio(){
+                isChecked = ($('input[type=radio]:checked').length > 0)
+                if(!isChecked){
+                    alert("Please select an option.");
+                    return false;
+                }
+                return true;
+            }
+            function readRadioButtons(){
+                var radios = document.getElementsByName('r');
+                for (var i = 0, length = radios.length; i < length; i++) {
+                    if (radios[i].checked) {
+                        return radios[i].value;
+                    }
+                }
+                return -1;
+            }
+            //submit trial response to the server
+            function submit_response(taskID, assignmentID, hitID, workerID, current_image, btn_val){
+                $.ajax({url: "/submit_response",
+                        data: { 
+                            "taskID": taskID,
+                            "assignmentID": assignmentID,
+                            "hitID": hitID,
+                            "workerID": workerID,
+                            "image": current_image,
+                            "trialNum": currentExperimentState,
+                            "val": btn_val,
+                        },
+                        method: "POST",
+                        success: function(result){
+                            nextState();
+                        }
+                });
+            }
+            function submit_trial(){
+                if(atLeastOneRadio()){
+                    btn_val = readRadioButtons()
+                    if(btn_val!=-1){
+                        submit_response(link,
+                                        assignmentID,
+                                        hitID,
+                                        workerID,
+                                        experiment_data[currentExperimentState]["image"],btn_val);
+                        
+                    }
+                }
+            }
+
+        </script>
+        <style>
+            .arrow-right {
+                width: 0; 
+                height: 0; 
+                border-top: 20px solid transparent;
+                border-bottom: 20px solid transparent;
+                border-left: 20px solid #ccc;
+                float:right;
+                margin-top:-10px;
+                margin-right:-20px;
+            }
+
+            .arrow-left {
+                width: 0; 
+                height: 0; 
+                border-top:20px solid transparent;
+                border-bottom: 20px solid transparent; 
+                float:left;
+                border-right:20px solid #ccc;
+                margin-top:-10px;
+                margin-left:-20px;
+            }
+            
+            .arrow-line {
+                width: 100%;
+                height: 0px;
+                border-top: 10px solid #ccc;
+                margin-top:5px;
+                float:left;
+            }
+        </style>
+    </head>
+    <body style="margin:0 auto;text-align:center;padding-top:20px;font-family:Arial, Helvetica, sans-serif">
+        <div class="container" style="width:800px;text-align:center;margin:0 auto;outline: dashed 1px black;padding:10px 10px 10px 10px;">
+            <div id="IRB_screen" style="text-align:left;margin:0 auto;width:700px;">
+                <h1>Informed consent to participate in this study</h1>
+                <p>
+                <div style="max-width: 35em;padding-top:30px;">
+                    <p>This HIT is part of a TODO:University X scientific research project. Your decision to complete
+                    this HIT is voluntary. There is no way for us to identify you.</p>
+        
+                    <p>The only information we will have, in addition to your responses, is the time at
+                    which you completed the survey and generic non-identifiable about your computer
+                    such as its resolution and browser version number.</p>
+        
+                    <p>The results of the research may be
+                    presented at scientific meetings or published in scientific journals.</p>
+        
+                    <p>The responses collected in this experiment will be released to the scientific
+                    community and the public.</p>
+        
+                    <p>Clicking on the 'SUBMIT' button on the bottom of this page indicates that you
+                    are at least 18 years of age and agree to complete this HIT voluntarily.</p>
+        
+                    <p>
+                    <input style="cursor:pointer;" id="flash_check" type="checkbox" onclick="$('#agree').prop('disabled', function(i, v) { return !v; });"/> <span onclick="$('#flash_check').click();" style="cursor: pointer;"><b>I agree</b></span>
+                    </p>
+        
+                    <button class="btn btn-primary" id="agree" onclick="nextState();" disabled>Submit</button>
+                    </div>
+                </p>
+            </div>
+            <div id="instructions_screen" style="display:none;text-align:left;margin:0 auto;width:700px;">
+                <h1>Instructions</h1>
+                <p>
+                    PLEASE READ THE FOLLOWING INSTRUCTIONS CAREFULLY
+                    BEFORE BEGINNING:
+                </p>
+                <p>
+                    You are about to be shown a series of images. Please
+                    look closely at all parts of the image.
+                </p>
+                <p>
+                    For each image there will also be a pair of description written in
+                    text boxes below the image. Your task is to pick which description best matches the image
+                    on a scale from 1 to 9. 1 means only the description on the left
+                    could describe the image. 9 means only the description on the right
+                    could describe the image. 5 means that both descriptions match the image
+                    equally well.
+                </p>
+                <p>
+                    Please read the captions carefully and compare them
+                    with your image. Your performance will be recorded and
+                    analyzed. If you do not take the task seriously we
+                    will know and will have to reject your work.
+                </p>
+                <p>
+                    Thank you!
+                </p>
+                <button class="btn btn-primary" onclick="nextState();">Next</button>
+            </div>
+            <div id="experiment_screen" style="display:none;">
+                <h1>Caption rating task (<span id="task_num"></span>/<span id="total_task_num"></span>)</h1>
+
+                
+                <table align="center" cellspacing="25px;" style="font-size: 20px;" width="800px;">
+                    <tr>
+                        <td colspan="2" align="center"><img id="task_image" src="" width="350px" /></td>
+                    </tr>
+                    <tr>
+                        <td width="50%" valign="top" style="text-align:center;border:1px solid black;padding:10px 10px 10px 10px;">
+                            <!-- <h3>Description 1</h3> --><div style="text-align:left;" id="c1_text"></div>
+                        </td>
+                        <td width="50%" valign="top" style="text-align:center;border:1px solid black;padding:10px 10px 10px 10px;">
+                           <!--  <h3>Description 2</h3> --><div height="100%" style="text-align:left;" id="c2_text"></div>
+                        </td>
+                    </tr>
+                    <tr>   
+                        
+                        <td colspan="2" align="center" width="100%">
+                            <!-- <input class="range_slider" type="range" min="0" max="10" value="5" class="slider" id="myRange"> -->
+                            <div style="font-size:25;width:700px;text-align:center;margin:0 auto;">Which description goes best with this image?<br /><br /></div>
+                            <div id="radio_btns">
+                                <table style="text-align:center" cellspacing="10px">
+                                    <tr>
+                                        <td>Only left<br />matches this image</td>
+                                        <td></td>
+                                        <td colspan="7"> 
+                                            <span class="arrow-left"></span>
+                                            <span class="arrow-line">both</span>
+                                            <span class="arrow-right"></span>
+                                        </td>
+                                        <td></td>
+                                        <td>Only right<br />matches this image</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><input type="radio" name="r" value="1"></td>
+                                        <td><input type="radio" name="r" value="2"></td>
+                                        <td><input type="radio" name="r" value="3"></td>
+                                        <td><input type="radio" name="r" value="4"></td>
+                                        <td><input type="radio" name="r" value="5"></td>
+                                        <td><input type="radio" name="r" value="6"></td>
+                                        <td><input type="radio" name="r" value="7"></td>
+                                        <td><input type="radio" name="r" value="8"></td>
+                                        <td><input type="radio" name="r" value="9"></td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td>1</td>
+                                        <td>2</td>
+                                        <td>3</td>
+                                        <td>4</td>
+                                        <td>5</td>
+                                        <td>6</td>
+                                        <td>7</td>
+                                        <td>8</td>
+                                        <td>9</td>
+                                        <td></td>
+                                    </tr>
+                                    <!--
+                                    <tr>
+                                        <td colspan="11" align="center">
+                                            <span style="font-size:12px;"><b>↑</b></span> <br/>
+                                            both </br>
+                                            saw it
+                                        </td>
+                                    </tr>
+                                    -->
+                                </table>
+                            </div>
+                        </td>
+                    
+                    </tr>
+                    <tr>
+                        <td colspan="2" align="center" width="100%">
+                            <button class="btn btn-primary" onclick="submit_trial();">Submit</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div id="done_screen" style="display:none;">
+                <h1>Thank you for your participation!</h1>
+                <p>Please enter <span id="done_code" style="font-weight:bold;font-size:22;color:blue;"></span> in the textbox on mechanical turk.</p>
+            </div>
+        </div>
+    </body>
+</html>
