@@ -14,7 +14,9 @@ rewards they offer.
 
 # Pipeline
 
-This pipeline assumes that you have started redis running on your machine.
+This pipeline assumes that you have started redis running on your
+machine.
+
 0. Modify the informed consent section in caption_compare/public/compare.html
 replace "TODO:University X" with your institution
 
