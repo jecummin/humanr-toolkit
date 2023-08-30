@@ -20,10 +20,10 @@ machine.
 0. Modify the informed consent section in caption_compare/public/compare.html
 replace "TODO:University X" with your institution
 
-1. Set experiment variables
+1. Set experiment variables by editing and running `set_environment.sh`
 
 ```(bash)
-$ export REDIS_PORT=<redis port> COMPARISON_TASK_DATABASE=<database number> COMPARISON_TASK_HOST=<hostname> COMPARISON_TASK_PORT=<port number>
+$ source set_environment.sh
 ```
 
 2. Start server
