@@ -7,7 +7,6 @@ from tqdm import tqdm
 
 
 
-
 def get_captions(image_dir, human_captions_fname, model_captions_list, model_names_list):
     # no class heirarchy. flattened image folder
     images = os.listdir(image_dir)
@@ -28,22 +27,24 @@ def get_captions(image_dir, human_captions_fname, model_captions_list, model_nam
     return images, human_captions, model_caption_dict
 
 
-def get_comparisons(images, human_captions, model_caption_dict, num_images):
+def get_comparisons(images, human_captions, model_caption_dict, num_images, human_human=False):
     random.shuffle(images)
     images = images[:num_images]
 
     comparisons = {}
-    # human to human: 1
+    # human to human: 1 (if human_human == True)
     # human to each model: 1
     for img in images:
         comparisons[img] = []
         ref_captions = human_captions[img]
         random.shuffle(ref_captions)
+        
         # for human-human comparisons
-        human1 = ref_captions[0]
-        human2 = ref_captions[1]
+        if human_human:
+            human1 = ref_captions[0]
+            human2 = ref_captions[1]
     
-        comparisons[img].append({'human1': human1, 'human2': human2})
+            comparisons[img].append({'human1': human1, 'human2': human2})
 
         # for human-model comparisons
         for model, model_captions in model_caption_dict.items():
@@ -100,8 +101,8 @@ def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_
                 ids = list(comp.keys())
 
                 caps = {
-                    img.split('/')[-1].split('.')[0] + '_attention_check_correct': comp[ids[0]],
-                    distractor_img.split('/')[-1].split('.')[0] + 'attention_check_distractor': distractor_caption,
+                    img.split('/')[-1].split('.')[0] + '_attention_check_correct': (comp[ids[0]], 'correct'),
+                    distractor_img.split('/')[-1].split('.')[0] + '_attention_check_distractor': (distractor_caption, 'distractor'),
                 }
 
                 ids = list(caps.keys())
@@ -109,9 +110,11 @@ def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_
                 task[i] = {
                     'image': img,
                     'c1_id': ids[0],
-                    'c1_text': caps[ids[0]],
+                    'c1_text': caps[ids[0]][0],
+                    'c1_source': cap[ids[0]][1],
                     'c2_id': ids[1],
-                    'c2_text': caps[ids[1]],
+                    'c2_text': caps[ids[1]][0],
+                    'c2_source': caps[ids[1]][1],
                 }
                 continue
         
@@ -136,8 +139,10 @@ def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_
                 'image': img,
                 'c1_id': img.split('/')[-1].split('.')[0] + '_' + name + '_' + ids[0],
                 'c1_text': comp[ids[0]],
+                'c1_source': ids[0],
                 'c2_id': img.split('/')[-1].split('.')[0] + '_' + name + '_' + ids[1],
                 'c2_text': comp[ids[1]],
+                'c2_source': ids[1],
             }
 
         task = [t for t in task if t is not None]
