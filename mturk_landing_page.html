@@ -1,12 +1,12 @@
 <!-- For help on using this template, see the blog post: https://blog.mturk.com/editing-the-survey-link-project-template-in-the-ui-7c75285105fb#.py7towsdx --><!-- HIT template: SurveyLink-v3.0 --><!-- The following snippet enables the 'responsive' behavior on smaller screens -->
 <meta content="width=device-width,initial-scale=1" name="viewport" />
-<div id="loading">Loading HIT ...</div>
+<!-- <div id="loading">Loading HIT ...</div> -->
 
 <div id="no" style="display:none;width:100%;text-align:center;font-size:18px;padding-top:20px;">Thank you for your interest in our HIT. Right now this HIT can only be accepted and completed once. Please return this HIT and check back later. Thanks!</div>
 
 <div id="try_again" style="display:none;width:100%;text-align:center;font-size:18px;padding-top:20px;">Thank you for your interest in our HIT. You are ineligible to complete this particular assignment but we likely have others that you can do. Please return this HIT and try to accept a new one from us!</div>
 
-<div id="main" style="display:none;">
+<div id="main">
 <section class="container" id="SurveyLink"><!-- Instructions -->
 <div class="row">
 <div class="col-xs-12 col-md-12">
@@ -27,7 +27,7 @@
 
 <p>&nbsp;</p>
 
-<p>Give us your email <a href="https://docs.google.com/forms/d/e/1FAIpQLSeaz7YVe1ydD11gXehxKe8jJiK95StVXTaSb8n-eods6fJT5A/viewform?usp=sf_link" style="background-color: rgb(255, 255, 255);">here</a>&nbsp;if you want to find out about future tasks like this one.&nbsp;</p>
+
 </div>
 </div>
 </div>
@@ -35,7 +35,10 @@
 <!-- End Instructions --><!-- Survey Link Layout -->
 
 <div class="row" id="workContent">
-<div class="col-xs-12 col-md-6 col-md-offset-3"><!-- Content for Worker -->
+<div class="col-xs-12 col-md-6 col-md-offset-3"><!-- Content for --
+  -- Worker -->
+  <form name='mturk_form' method='post' id='mturk_form'
+	  action='https://www.mturk.com/mturk/externalSubmit'>
 <table class="table table-condensed table-bordered">
 	<colgroup>
 		<col class="col-xs-4 col-md-4" />
@@ -52,11 +55,33 @@
 			<h3><a href="${HIT_LINK}" id="start" target="_blank">Start</a></h3>
 			</td>
 		</tr>
+		<tr>
+      <td>
+	<input type='hidden' value='' name='assignmentId' id='assignmentId'/>
+	<p><label>Enter your 4-digit completion code here</label></p>
+      </td>
+      <td>
+	<p><textarea name='comment' cols='10' rows='1'></textarea></p>
+    <script language='Javascript'>turkSetAssignmentID();</script>
+      </td>
+		</tr>
+
 	</tbody>
 </table>
+<p><input type='submit' id='submitButton' value='Submit' /></p></form>
+
+<!-- <input type="submit" id="submitButton" class="btn btn-primary" -->
+<!--        value="Submit"> -->
+
 <!-- End Content for Worker --><!-- Input from Worker -->
 
-<div class="form-group"><label for="surveycode">Provide the 4 digit task completion&nbsp;code here:</label> <input class="form-control" id="surveycode" name="surveycode" placeholder="e.g. 1234" required="" type="text" /> <input class="form-control" id="valid" name="valid" placeholder="" style="display:none;" type="text" /></div>
+<!-- <div class="form-group"><label for="surveycode">Provide the 4 digit -->
+<!--     task completion&nbsp;code here:</label> -->
+<!--   <input class="form-control" id="surveycode" name="surveycode" -->
+<!-- 	 placeholder="e.g. 1234" required="" type="text" /> -->
+<!--   <input class="form-control" id="valid" name="valid" placeholder="" -->
+<!-- 	 style="display:none;" type="text" /></div> -->
+
 <!-- End input from Worker --></div>
 </div>
 <!-- End Survey Link Layout --></section>
@@ -109,12 +134,16 @@ var assign = turkGetParam('assignmentId');
 var hit = turkGetParam('hitId');
 var worker = turkGetParam('workerId');
 
-function startHIT(){
+  function startHIT(){
+
+      //$("#submitButton").show();
   jQuery.validator.addMethod("isCorrect", function(value, element) {
       if(value=="email"){
         $("#valid").val("1843");
         return true;
       }
+
+      
        
   var val=md5(assign).substr(0, 4);
   //console.log(val);
@@ -130,6 +159,7 @@ function startHIT(){
           surveycode: {required:true, minlength: 4,isCorrect: true}
       }
   });
+	//$("#submitButton").show();
 
      $('#mturk_form').submit(function(){
               if(!$("#mturk_form").valid()){
@@ -144,11 +174,15 @@ function startHIT(){
            if(assign == "ASSIGNMENT_ID_NOT_AVAILABLE" || assign == "" || !assign) {
                link.innerHTML = "Link will appear here when HIT is accepted";
                link.setAttribute('href', "");
+	       $("#submitButton").show();
            } else {
                link.innerHTML = "Click to start";
                link.setAttribute('href',new String("${HIT_Link}" +
  	        				   "&b=" + assign + "&c=" +
-	        					   hit + "&d=" + worker));
+	        					   hit + "&d="
+						   + worker));
+	       
+
 	       //link.setAttribute('href',new String("${HIT_Link}"));
            }
 
@@ -171,14 +205,13 @@ function startHIT(){
   */
     });
 }
-  //startHIT();
+ //startHIT();
 
   //preview HIT
-
+  // $("#loading").hide()
+  // $("#main").show();
+  //$("#submitButton").show();
+  startHIT();
 
 console.log('Here');
-
-$("#loading").hide()
-$("#main").show();
-$("#submitButton").show();
-startHIT();</script>
+</script>
