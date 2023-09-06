@@ -1,14 +1,17 @@
 import os
 import time
 import redis
+import json
 import argparse
 import itertools
 import threading
 import traceback
+import subprocess
 import pandas as pd
-from make_csv import build_experiment_links
-from make_tasks import get_comparisons, get_tasks
+from tqdm import tqdm
+from scipy import stats
 from mturk import deploy_hits, check_hits, expire_hits
+from make_tasks import get_captions, get_comparisons, get_tasks, build_experiment_links
 
 
 class server(threading.Thread):
@@ -18,8 +21,12 @@ class server(threading.Thread):
         self.thread_ID = thread_ID
  
     def run(self):
-        os.system('node server.js');
+        proc = subprocess.Popen(['node', 'server.js'])
+        self.pid = proc.pid
 
+    def kill(self):
+        os.system(f'kill {self.pid}')
+        
         
 def repl(question, yes_response, no_response):
     confirmed = False
@@ -40,20 +47,25 @@ def get_results(hit_ids, link_ids, tasks):
         host=os.environ.get('REDIS_HOST'),
         port=os.environ.get('REDIS_PORT'),
         password=os.environ.get('REDIS_PASSWORD'),
-        db=os.environ.get('COMPARISON_TASK_DB')
+        db=os.environ.get('COMPARISON_TASK_DATABASE')
     )
 
     results_dict = {}
     for key in client.scan_iter():
+        key = key.decode()
         if key not in link_ids:
-            coninue
+            continue
+
 
         results_dict[key] = []
         
         results = client.hgetall(key)
+        results = {k.decode(): v.decode() for k,v in results.items()}
         hit_id = results['hitID']
-        if hit_id not in link_ids:
+        
+        if hit_id not in hit_ids:
             continue
+        
         assignment_id = results['assignmentID']
         worker_id = results['workerID']
 
@@ -62,10 +74,9 @@ def get_results(hit_ids, link_ids, tasks):
         del results['workerID']
 
         task_images = [t["image"] for t in tasks[key]]
-
         for image in results:
             idx = task_images.index(image)
-            results_dict[key].append(task_images[key][idx][:])
+            results_dict[key].append({k:v for k,v in tasks[key][idx].items()})
             
             source_1 = tasks[key][idx]['c1_source']
             source_2 = tasks[key][idx]['c2_source']
@@ -78,23 +89,25 @@ def get_results(hit_ids, link_ids, tasks):
             raw_score = int(results[image])
             if flip:
                 score = 10 - raw_score
+            else:
+                score = raw_score
 
             if "correct" in sources:
-                comparison_type == "attention_check"
+                comparison_type = "attention_check"
             elif "human1" in sources:
-                comparison_type == "human"
+                comparison_type = "human"
             else:
                 if source_1 == "human":
-                    comparison_type == source_2
+                    comparison_type = source_2
                 else:
-                    comparison_type == source_1
+                    comparison_type = source_1
                     
-            results_dict[key][idx]['type'] = comparison_type
-            results_dict[key][idx]['raw_score'] = raw_score
-            results_dict[key][idx]['score'] = score
-            results_dict[key][idx]['assignmentID'] = assignment_id
-            results_dict[key][idx]['hitID'] = hit_id
-            results_dict[key][idx]['workerID'] = worker_id
+            results_dict[key][-1]['type'] = comparison_type
+            results_dict[key][-1]['raw_score'] = raw_score
+            results_dict[key][-1]['score'] = score
+            results_dict[key][-1]['assignmentID'] = assignment_id
+            results_dict[key][-1]['hitID'] = hit_id
+            results_dict[key][-1]['workerID'] = worker_id
 
     results_df = pd.DataFrame(list(itertools.chain(*[results_dict[x] for x in results_dict])))    
     return results_df
@@ -106,7 +119,7 @@ def compute_humanr(results_df):
 
     # remove assignments with failed attention checks
     results_df = results_df[~results_df['assignmentID'].isin(failed_assignments)]
-    results_df = result_df[results_df['type'] != 'attention_check']
+    results_df = results_df[results_df['type'] != 'attention_check']
     print(f'==> Ignoring {len(failed_assignments)} tasks for failed attention checks')
 
     # TODO more strict option: remove work from all workers who fail attention checks
@@ -115,14 +128,18 @@ def compute_humanr(results_df):
 
     model_scores = {}
     model_ci = {}
+    confidence = 0.95
     for model in results_df['type'].unique():
         model_df = results_df[results_df['type'] == model]
         score = model_df['HUMANr'].mean()
         sem = model_df['HUMANr'].sem()
-        ci = stats.t.interval(confidence, len(model_df['HUMANr'])-1, loc=score, scale=sem)
+        if sem:
+            ci = stats.t.interval(confidence, len(model_df['HUMANr'])-1, loc=score, scale=sem)
+        else:
+            ci = (score, score)
 
-        model_scores['model'] = score
-        model_ci['model'] = score - ci.low
+        model_scores[model] = score
+        model_ci[model] = score - max(ci[0], -1)
 
     return model_scores, model_ci
     
@@ -156,7 +173,7 @@ if __name__ == "__main__":
     assert len(args.model_captions) == len(args.model_names) ; "Should have one distinct model name for each caption"
     images, human_captions, model_caption_dict = get_captions(args.image_dir, args.human_captions, args.model_captions, args.model_names)
     comparisons = get_comparisons(images, human_captions, model_caption_dict, args.num_images, human_human=args.human_human)
-    tasks = get_tasks(images, comparisons, model_caption_dict, args.num_trials_per_task, args.num_attention_checks)
+    tasks = get_tasks(images, comparisons, human_captions, model_caption_dict, args.num_trials_per_task, args.num_attention_checks)
 
 
     if os.path.exists('./public/data/comparison_tasks.json'):
@@ -170,8 +187,8 @@ if __name__ == "__main__":
         json.dump(tasks, f)
 
         
-    link_ids = tasks.keys()
-    links = build_experiment_links()
+    link_ids = list(tasks.keys())
+    links = build_experiment_links(link_ids)
     print('Experiment links saved to task_links/')
 
     print('Starting HUMANr collection server...')
@@ -187,13 +204,18 @@ if __name__ == "__main__":
             no_response='Quitting...',
         )
 
-    preview_url, hit_type_id, hit_ids = deploy_hits(links, args.reward, args.sandbox)
+    preview_url, hit_type_id, hit_ids = deploy_hits(links, args.reward_per_task, args.sandbox)
 
     last_completed = 0
     completed = []
-    
+
+    with open('latest_run.json', 'w') as f:
+        json.dump({'hit_ids': hit_ids, 'link_ids': link_ids, 'tasks': tasks}, f)
+
+    results_df = None
     try:
         while len(completed) != len(hit_ids):
+            time.sleep(10)
             completed = check_hits(hit_ids)
 
             if len(completed) != last_completed:
@@ -215,11 +237,16 @@ if __name__ == "__main__":
         expire_hits(hit_ids)
 
     except Exception as e:
-        print('Something went wrong. Canceling all tasks and exiting...')
+        print('Something went wrong. Canceling all tasks and exiting...\n')
         expire_hits(hit_ids)
         print(e)
         print(traceback.format_exc())
 
+    if results_df is None:
+        print('No results to save. Exiting...\n')
+        server_thread.kill()
+        os._exit(os.EX_OK)
+        
     humanr_stats, results_df = compute_humanr_from_redis(hit_ids, link_ids, tasks)
     humanr_scores, humanr_ci = humanr_stats
     print('==> Final HUMANr results:')
@@ -228,6 +255,7 @@ if __name__ == "__main__":
                     
     print(f'==> Saving results to {args.experiment_name}_humanr_results.csv...')
     print('==> Terminating server and exiting...')
+    server_thread.kill()
     os._exit(os.EX_OK)
 
 
