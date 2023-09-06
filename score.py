@@ -155,7 +155,6 @@ def compute_humanr_from_redis(hit_ids, link_ids, tasks):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('image_dir', help="Path to flattened image directory", default="./public/images")
     parser.add_argument('--experiment_name', help="Experiment name", default="humanr")
     parser.add_argument('--human_captions', help="Path to human caption json")
     parser.add_argument('--model_captions', help="List of paths to model caption json files", nargs="+")
@@ -163,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_images', help="Number of images to sample for all tasks", default=1000, type=int)
     parser.add_argument('--num_trials_per_task', help="Number of comparisons to include in each task", type=int, default=10)
     parser.add_argument('--num_attention_checks', help="Number of attention checks to include in each task", type=int, default=1)
-    parser.add_argument('--reward_per_task', help="Worker reward for completing tasks", type=float, default=0.25)
+    parser.add_argument('--reward_per_task', help="Worker reward for completing tasks", type=float)
     parser.add_argument('--sandbox', help="Post hits to MTurk sandbox rather than production environment", action='store_true')
     parser.add_argument('--human_human', help="Include comparisons between human captions for baseline variance", action='store_true')
 
@@ -171,7 +170,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert len(set(args.model_names))  == len(args.model_names) ; "Model names should be distinct"
     assert len(args.model_captions) == len(args.model_names) ; "Should have one distinct model name for each caption"
-    images, human_captions, model_caption_dict = get_captions(args.image_dir, args.human_captions, args.model_captions, args.model_names)
+    images, human_captions, model_caption_dict = get_captions('./public/images', args.human_captions, args.model_captions, args.model_names)
     comparisons = get_comparisons(images, human_captions, model_caption_dict, args.num_images, human_human=args.human_human)
     tasks = get_tasks(images, comparisons, human_captions, model_caption_dict, args.num_trials_per_task, args.num_attention_checks)
 
