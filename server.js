@@ -63,7 +63,6 @@ app.post('/submit_response', (req, res) => {
     // record the response
     client.hSet(req.body.taskID, req.body.image, req.body.val);
     res.send("response recorded")
-    console.log(req.body)
 })
 
 const COMPARISON_TASK_PORT = process.env.COMPARISON_TASK_PORT;
