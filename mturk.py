@@ -38,6 +38,8 @@ def deploy_hits(links, reward, sandbox):
 
     with open('mturk_landing_page.html', 'r') as f:
         landing = str(BeautifulSoup(f.read(), 'html'))
+
+    landing = landing.replace("${INSTITUTION_EMAIL}", os.environ.get('INSTITUTION_EMAIL'))
     
 
 
