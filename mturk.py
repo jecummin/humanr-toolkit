@@ -1,6 +1,7 @@
 import os
 import boto3
 import json
+from tqdm import tqdm
 from hashlib import md5
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -8,6 +9,10 @@ from bs4 import BeautifulSoup
 
 def deploy_hits(links, reward, sandbox):
     sandbox = True
+    
+    global endpoint_url
+    global preview_url
+    
     if sandbox:
         endpoint_url = 'https://mturk-requester-sandbox.us-east-1.amazonaws.com'
         preview_url = 'https://workersandbox.mturk.com/mturk/preview'
@@ -34,33 +39,32 @@ def deploy_hits(links, reward, sandbox):
     with open('mturk_landing_page.html', 'r') as f:
         landing = str(BeautifulSoup(f.read(), 'html'))
     
-    question_html = f"""
-    <HTMLQuestion xmlns="http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd">
-    <HTMLContent><![CDATA[
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>
-    <script type='text/javascript' src='https://s3.amazonaws.com/mturk-public/externalHIT_v1.js'></script>
-    </head>
-    <body>
 
-    {landing}
-
-    <form name='mturk_form' method='post' id='mturk_form' action='https://www.mturk.com/mturk/externalSubmit'>
-    <input type='hidden' value='' name='assignmentId' id='assignmentId'/>
-    </body>
-    </html>
-    ]]>
-    </HTMLContent>
-    <FrameHeight>450</FrameHeight>
-    </HTMLQuestion>
-    """
 
     environment = 'SANDBOX' if sandbox else 'PRODUCTION'
     print(f'Posting hits to {environment} environment')
     hit_ids = []
     for hit_link in tqdm(links):
+        question_html = f"""
+        <HTMLQuestion xmlns="http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd">
+        <HTMLContent><![CDATA[
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'/>
+        <script type='text/javascript' src='https://s3.amazonaws.com/mturk-public/externalHIT_v1.js'></script>
+        </head>
+        <body>
+
+        {landing}
+        
+        </body>
+        </html>
+        ]]>
+        </HTMLContent>
+        <FrameHeight>450</FrameHeight>
+        </HTMLQuestion>
+        """
         question_html = question_html.replace('${HIT_Link}', hit_link)
         hit = client.create_hit(**TaskAttributes, Question=question_html)
         hit_ids.append(hit['HIT']['HITId'])
@@ -80,10 +84,11 @@ def check_hits(hit_ids):
     completed = []
     for hit in all_hits:
         # count only HITs just posted for HUMANr
-        if hit['HIT']['HITId'] not in hit_ids:
+        if hit['HITId'] not in hit_ids:
             continue
-        if hit['HIT']['HITStatus'] in ['Reviewable', 'Reviewing']:
-            completed.append(hit['HIT']['HITId'])
+        
+        if hit['HITStatus'] in ['Reviewable', 'Reviewing']:
+            completed.append(hit['HITId'])
     return completed
 
 def expire_hits(hit_ids):
@@ -91,10 +96,10 @@ def expire_hits(hit_ids):
     all_hits = client.list_hits()['HITs']
     for hit in all_hits:
         # expire only HITs just posted for HUMANr
-        if hit['HIT']['HITId'] not in hit_ids:
+        if hit['HITId'] not in hit_ids:
             continue
         client.update_expiration_for_hit(
-            HITId=hit['HIT']['HITId'],
+            HITId=hit['HITId'],
             ExpireAt=datetime(2015, 1, 1)
         )
     return 
