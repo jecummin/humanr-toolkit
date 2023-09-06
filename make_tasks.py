@@ -56,13 +56,15 @@ def get_comparisons(images, human_captions, model_caption_dict, num_images, huma
     return comparisons
 
 
-def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_attention_checks):
+def get_tasks(images, comparisons, human_captions, model_caption_dict, num_trials_per_task, num_attention_checks):
 
     tasks = {}
     num_comparisons = sum([len(v) for v in comparisons.values()])
     num_tasks = math.ceil(num_comparisons / (num_trials_per_task - num_attention_checks))
-    image_sample_list = images[:]
 
+    images = [img for img in images if img in comparisons]
+    image_sample_list = images[:]
+    
     for n in tqdm(range(num_tasks)):
         images_seen = set()
         length = 10
@@ -83,11 +85,13 @@ def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_
                     # images than the others and move on.
                     break
                 sample_try_count += 1
-            continue
+                continue
             images_seen.add(img)
 
             comps = comparisons[img]
             idx = random.choice([i for i in range(len(comps))])
+
+
 
             if i < num_attention_checks:
                 # add attention check
@@ -111,7 +115,7 @@ def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_
                     'image': img,
                     'c1_id': ids[0],
                     'c1_text': caps[ids[0]][0],
-                    'c1_source': cap[ids[0]][1],
+                    'c1_source': caps[ids[0]][1],
                     'c2_id': ids[1],
                     'c2_text': caps[ids[1]][0],
                     'c2_source': caps[ids[1]][1],
@@ -151,7 +155,29 @@ def get_tasks(images, comparisons, model_caption_dict, num_trials_per_task, num_
 
     return tasks
         
-    
+
+def build_experiment_links(task_ids):
+    comparison_task_host = os.environ.get('COMPARISON_TASK_HOST', 'localhost')
+    comparison_task_port = os.environ.get('COMPARISON_TASK_PORT', '8087')
+
+    max_size = 500 # sets the number of links to include in each csv
+    batches = math.ceil(len(task_ids) / max_size)
+
+    if not os.path.exists('task_links/'):
+        os.makedirs('task_links/')
+
+    links = []
+    for i in range(batches):
+        with open(f'task_links/hit_links_{i}.csv', 'w') as f:
+            f.write('HIT_Link\n')
+            for task in task_ids[i * max_size : (i + 1) * max_size]:
+                link = f'http://{comparison_task_host}:{comparison_task_port}/compare.html?link=' + task
+                links.append(link)
+                f.write(link)
+                f.write('\n')
+
+    return links
+
 
 
 if __name__ == "__main__":
