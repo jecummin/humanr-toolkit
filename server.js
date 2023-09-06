@@ -35,6 +35,11 @@ app.use(express.json()) // To parse the incoming requests with JSON payloads
 
 app.use(express.static('./public'));
 
+// returns the name of the institution running the experiment
+app.post('/get_name', (req, res) => {
+        res.send(process.env.INSTITUTION_NAME);
+})
+
 // called by the client at the beginning of a hit
 // returns the set of comparison tasks for the whole hit
 app.post('/get_captions', (req, res) => {
@@ -46,6 +51,7 @@ app.post('/get_captions', (req, res) => {
         res.send("");
     }
 })
+
 
 // called by the client after submitting each tasks
 // stores the result in redis
