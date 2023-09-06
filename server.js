@@ -30,7 +30,6 @@ let comparison_tasks = JSON.parse(readFileSync('public/data/comparison_tasks.jso
 console.log("Loaded comparison tasks ...");
 console.log("num tasks: ", Object.keys(comparison_tasks).length);
 
-
 app.use(express.urlencoded({extended: true}));
 app.use(express.json()) // To parse the incoming requests with JSON payloads
 
@@ -40,12 +39,10 @@ app.use(express.static('./public'));
 // returns the set of comparison tasks for the whole hit
 app.post('/get_captions', (req, res) => {
     console.log("got new hit request ...");
-    console.log(req.body.taskID);
     if(req.body.taskID in comparison_tasks){
         res.send(comparison_tasks[req.body.taskID]);
     }
     else{
-        console.log("invalid taskID: ", req.body.taskID)
         res.send("");
     }
 })
@@ -53,15 +50,14 @@ app.post('/get_captions', (req, res) => {
 // called by the client after submitting each tasks
 // stores the result in redis
 app.post('/submit_response', (req, res) => {
-    console.log("got task response ...");
-    console.log(req.body);
     // overwrite the assignmentID, hitID, workerID with the one from the latest response
     client.hSet(req.body.taskID, "assignmentID", req.body.assignmentID);
     client.hSet(req.body.taskID, "hitID", req.body.hitID);
     client.hSet(req.body.taskID, "workerID", req.body.workerID);
     // record the response
-    console.log(req.body.taskID, req.body.image, req.body.val);
     client.hSet(req.body.taskID, req.body.image, req.body.val);
+    res.send("response recorded")
+    console.log(req.body)
 })
 
 const COMPARISON_TASK_PORT = process.env.COMPARISON_TASK_PORT;
