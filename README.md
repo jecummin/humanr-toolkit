@@ -7,24 +7,54 @@ Turk and process results as they come in. We encourage the user to
 comply with minimum wage regulation and even to be generous with the
 rewards they offer.
 
+# How to run HUMANr
 
-# Pipeline
+```(bash)
+$ git clone https://github.com/jecummin/humanr-toolkit.git && cd humanr-toolkit
+$ pip install -r requirement.txt
+$ aws configure
+$ emacs set_environment.sh
+$ source set_environment.sh
+$ mv /path/to/image/directory ./public/images
+$ python score.py <arguments> ...
+```
+
+
+# Detailed instructions
 
 This pipeline assumes that you have started redis running on your
 machine.
 
-1. Set experiment variables by editing and running `set_environment.sh`
+1. Clone the repo and install requirements
 
 ```(bash)
+$ git clone https://github.com/jecummin/humanr-toolkit.git && cd humanr-toolkit
+$ pip install -r requirement.txt
+```
+
+2. Configure your AWS credentials on your machine if you do not already have AWS configured.
+
+```(bash)
+$ aws configure
+```
+
+3. Set experiment variables by editing and running `set_environment.sh`
+
+```(bash)
+$ emacs set_environment.sh
 $ source set_environment.sh
 ```
 
-2. Move experiment images to `public/images/`. This directory should
+4. Move experiment images to `public/images/`. This directory should
 be a flattened directory with all images at the top level. The images
 must be in this directory so that they can be displayed in the web app
 workers use to do the comparison tasks.
 
-3. Compute HUMANr. You can compute HUMANr from the command line but it
+```(bash)
+$ mv /path/to/image/directory ./public/images/
+```
+
+5. Compute HUMANr. You can compute HUMANr from the command line but it
 will likely take a few hours depending on how many images and models
 you are computing it for. We highly recommend you run it in a separate
 terminal session that you can leave running. The command for computing
