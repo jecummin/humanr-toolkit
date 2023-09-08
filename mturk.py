@@ -1,8 +1,7 @@
 import os
-import boto3
 import json
+import boto3
 from tqdm import tqdm
-from hashlib import md5
 from datetime import datetime
 from bs4 import BeautifulSoup
 
@@ -26,7 +25,8 @@ def deploy_hits(links, reward, sandbox):
     hit_title = 'Tell us which image caption matches best.'
     TaskAttributes = {
         'MaxAssignments': 1,                 
-        'LifetimeInSeconds': 10*24*60*60,           
+        'LifetimeInSeconds': 10*24*60*60,
+        'AutoApproveDelayInSeconds': 2*24*60*60
         'AssignmentDurationInSeconds': 60*10, 
         'Reward': str(reward),
         'Title': hit_title,
@@ -37,7 +37,7 @@ def deploy_hits(links, reward, sandbox):
     }
 
     with open('mturk_landing_page.html', 'r') as f:
-        landing = str(BeautifulSoup(f.read(), 'html'))
+        landing = str(BeautifulSoup(f.read(), 'html.parser'))
 
     landing = landing.replace("${INSTITUTION_EMAIL}", os.environ.get('INSTITUTION_EMAIL'))
     

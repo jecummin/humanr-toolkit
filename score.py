@@ -193,6 +193,7 @@ if __name__ == "__main__":
     print('Starting HUMANr collection server...')
     server_thread = server('humanr_server', 0)
     server_thread.start()
+    time.sleep(3)
 
     mturk_fee_factor = 1.2
     total_reward = args.reward_per_task * len(links) * mturk_fee_factor
@@ -203,7 +204,19 @@ if __name__ == "__main__":
             no_response='Quitting...',
         )
 
-    preview_url, hit_type_id, hit_ids = deploy_hits(links, args.reward_per_task, args.sandbox)
+    try:
+        preview_url, hit_type_id, hit_ids = deploy_hits(links, args.reward_per_task, args.sandbox)
+    except Exception as e:
+        print("Somethine went wrong when posting tasks")
+        print("Canceling tasks and exiting...")
+        expire_hits(hit_ids)
+        print(e)
+        print(traceback.format_exc())
+        server_thread.kill()
+        os._exit(os.EX_OK)
+
+
+        
 
     last_completed = 0
     completed = []
@@ -218,6 +231,7 @@ if __name__ == "__main__":
             completed = check_hits(hit_ids)
 
             if len(completed) != last_completed:
+                print()
                 print(f'==> {len(completed)} / {len(hit_ids)} tasks completed')
                 humanr_stats, results_df = compute_humanr_from_redis(hit_ids, link_ids, tasks)
                 humanr_scores, humanr_ci = humanr_stats

@@ -43,7 +43,7 @@ app.post('/get_name', (req, res) => {
 // called by the client at the beginning of a hit
 // returns the set of comparison tasks for the whole hit
 app.post('/get_captions', (req, res) => {
-    console.log("got new hit request ...");
+    console.log("A worker has started a new task ...");
     if(req.body.taskID in comparison_tasks){
         res.send(comparison_tasks[req.body.taskID]);
     }
