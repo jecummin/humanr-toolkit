@@ -1,6 +1,7 @@
 import os
 import json
 import boto3
+import time
 from tqdm import tqdm
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -26,7 +27,7 @@ def deploy_hits(links, reward, sandbox):
     TaskAttributes = {
         'MaxAssignments': 1,                 
         'LifetimeInSeconds': 10*24*60*60,
-        'AutoApproveDelayInSeconds': 2*24*60*60
+        'AutoApprovalDelayInSeconds': 2*24*60*60, # auto approve in 2 days
         'AssignmentDurationInSeconds': 60*10, 
         'Reward': str(reward),
         'Title': hit_title,
@@ -46,7 +47,8 @@ def deploy_hits(links, reward, sandbox):
     environment = 'SANDBOX' if sandbox else 'PRODUCTION'
     print(f'Posting hits to {environment} environment')
     hit_ids = []
-    for hit_link in tqdm(links):
+    hit_type_id = ''
+    for i, hit_link in enumerate(tqdm(links)):
         question_html = f"""
         <HTMLQuestion xmlns="http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd">
         <HTMLContent><![CDATA[
@@ -68,10 +70,20 @@ def deploy_hits(links, reward, sandbox):
         </HTMLQuestion>
         """
         question_html = question_html.replace('${HIT_Link}', hit_link)
-        hit = client.create_hit(**TaskAttributes, Question=question_html)
+        
+        try:
+            hit = client.create_hit(**TaskAttributes, Question=question_html)
+        except Exception as e:
+            print("Something went wrong when posting tasks")
+            print("Canceling tasks...")
+            time.sleep(5)
+            expire_hits(hit_ids)
+            raise(e)
+        
+        hit_type_id = hit['HIT']['HITTypeId']
         hit_ids.append(hit['HIT']['HITId'])
 
-    hit_type_id = hit['HIT']['HITTypeId']
+
     print()
     print("You can view the HITs here:\n\t")
     print(preview_url + "?groupId={}".format(hit_type_id))

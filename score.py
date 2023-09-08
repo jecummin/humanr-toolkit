@@ -207,10 +207,7 @@ if __name__ == "__main__":
     try:
         preview_url, hit_type_id, hit_ids = deploy_hits(links, args.reward_per_task, args.sandbox)
     except Exception as e:
-        print("Somethine went wrong when posting tasks")
-        print("Canceling tasks and exiting...")
-        expire_hits(hit_ids)
-        print(e)
+        print('Killing server and exiting')
         print(traceback.format_exc())
         server_thread.kill()
         os._exit(os.EX_OK)
