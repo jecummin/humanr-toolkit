@@ -5,7 +5,7 @@ not superhuman captioners_. HUMANr can be collected using a single
 command that will launch caption comparison tasks on Amazon Mechanical
 Turk and process results as they come in. We encourage the user to
 comply with minimum wage regulation and even to be generous with the
-rewards they offer.
+rewards they offer. **This toolkit will always explicitly request your permission before incurring costs on your AWS account.**
 
 # How to run HUMANr
 
