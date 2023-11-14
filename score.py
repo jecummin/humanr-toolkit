@@ -237,6 +237,7 @@ if __name__ == "__main__":
                     print(f'\t ==> {model}: {humanr_scores[model]} +/- {humanr_ci[model]}')
                     
                 print(f'==> Saving results to {args.experiment_name}_humanr_results.csv...')
+                results_df.to_csv(f'{args.experiment_name}_humanr_results.csv')
                 print()
                 print('Press CTRL-C at any time to stop collection and cancel remaining MTurk tasks...')
 
@@ -264,6 +265,7 @@ if __name__ == "__main__":
         print(f'\t ==> {model}: {humanr_scores[model]} +/- {humanr_ci[model]}')
                     
     print(f'==> Saving results to {args.experiment_name}_humanr_results.csv...')
+    results_df.to_csv(f'{args.experiment_name}_humanr_results.csv')
     print('==> Terminating server and exiting...')
     server_thread.kill()
     os._exit(os.EX_OK)
