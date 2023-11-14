@@ -9,20 +9,29 @@ from tqdm import tqdm
 
 def get_captions(image_dir, human_captions_fname, model_captions_list, model_names_list):
     # no class heirarchy. flattened image folder
-    images = os.listdir(image_dir)
+    images = set(os.listdir(image_dir))
+    
     with open(human_captions_fname, 'r') as f:
         human_captions = json.load(f)
-    human_captions = {k: v for k,v in human_captions.items() if k in images}
+        
+    human_images = set(human_captions.keys())
+    images = images.intersection(human_images)
 
     model_caption_dict = {}
     for model_name, model_captions_fname in zip(model_names_list, model_captions_list):
         
         with open(model_captions_fname, 'r') as f:
             model_captions = json.load(f)
-        model_captions = {k: v for k,v in model_captions.items() if k in images}
+
+        model_images = set(model_captions.keys())
+        images = images.intersection(model_images)
 
         model_caption_dict[model_name] = model_captions
 
+    images = list(images)
+    human_captions = {k: v for k,v in human_captions.items() if k in images}
+    for model_name, model_captions in model_caption_dict.items():
+        model_caption_dict[model_name] = {k: v for k,v in model_captions.items() if k in images}
 
     return images, human_captions, model_caption_dict
 

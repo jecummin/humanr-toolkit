@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 
 
 def deploy_hits(links, reward, sandbox):
-    sandbox = True
     
     global endpoint_url
     global preview_url
@@ -90,11 +89,23 @@ def deploy_hits(links, reward, sandbox):
 
     return preview_url, hit_type_id, hit_ids
 
+def get_all_hits():
+    client = boto3.client('mturk', endpoint_url=endpoint_url)
+    batch = client.list_hits(MaxResults=100)
+    hits = batch['HITs']
+    all_hits = []
+    all_hits.extend(hits)
+    while len(hits) > 0:
+        token = batch['NextToken']
+        batch = client.list_hits(MaxResults=100, NextToken=token)
+        hits = batch['HITs']
+        all_hits.extend(hits)
+    return all_hits
 
 
 def check_hits(hit_ids):
     client = boto3.client('mturk', endpoint_url=endpoint_url)
-    all_hits = client.list_hits()['HITs']
+    all_hits = get_all_hits()
     completed = []
     for hit in all_hits:
         # count only HITs just posted for HUMANr
@@ -107,11 +118,12 @@ def check_hits(hit_ids):
 
 def expire_hits(hit_ids):
     client = boto3.client('mturk', endpoint_url=endpoint_url)
-    all_hits = client.list_hits()['HITs']
-    for hit in all_hits:
+    all_hits = get_all_hits()
+    for hit in tqdm(all_hits):
         # expire only HITs just posted for HUMANr
         if hit['HITId'] not in hit_ids:
             continue
+        time.sleep(0.01)
         client.update_expiration_for_hit(
             HITId=hit['HITId'],
             ExpireAt=datetime(2015, 1, 1)

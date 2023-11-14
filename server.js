@@ -44,6 +44,7 @@ app.post('/get_name', (req, res) => {
 // returns the set of comparison tasks for the whole hit
 app.post('/get_captions', (req, res) => {
     console.log("A worker has started a new task ...");
+    console.log(req.body.taskID)
     if(req.body.taskID in comparison_tasks){
         res.send(comparison_tasks[req.body.taskID]);
     }
