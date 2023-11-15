@@ -117,12 +117,16 @@ def compute_humanr(results_df):
     failed_attention_checks = results_df[(results_df['type'] == 'attention_check') & (results_df['score'] >= 5)]
     failed_assignments = failed_attention_checks['assignmentID'].unique().tolist()
 
+
     # remove assignments with failed attention checks
     results_df = results_df[~results_df['assignmentID'].isin(failed_assignments)]
     results_df = results_df[results_df['type'] != 'attention_check']
     print(f'==> Ignoring {len(failed_assignments)} tasks for failed attention checks')
 
     # TODO more strict option: remove work from all workers who fail attention checks
+    # workers_to_ignore = failed_attention_checks['workerID'].unique().tolist()
+    # results_df = results_df[~results_df['workerID'].isin(workers_to_ignore)]
+    
 
     results_df['HUMANr'] = (results_df['score'] - 5) / 4
 

@@ -33,6 +33,10 @@ def deploy_hits(links, reward, sandbox):
         'Keywords': 'image, caption, text',
         'Description': 'Look at an image with two proposed captions and rate which one matches better.',
         'QualificationRequirements': [ # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/mturk.html
+            {
+                'QualificationTypeId': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH', # require workers to be masters
+                'Comparator': 'Exists',
+            }
         ]
     }
 
